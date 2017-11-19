@@ -1,5 +1,19 @@
 # 3048m-cli
 
+Download:
+
+```
+curl -O https://raw.githubusercontent.com/LucaLanziani/3048m-cli/master/3048m.sh
+```
+
+Fix permission:
+
+```
+chmod +x ./3048m.sh
+```
+
+Run:
+
 ```
 ./3048m.sh
 ```

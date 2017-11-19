@@ -1,8 +1,11 @@
 #!/bin/bash
 set -o errexit
 
+SCRIPT_PATH=$(cd "$(dirname "$0")" || exit 1; pwd -P)
+cd "$SCRIPT_PATH" || exit 1;
+
 API_URL="https://app.10000ft.com/api"
-COOKIE_FILE=".3048.cookie"
+COOKIE_FILE=".3048m.cookie"
 
 COMMANDS=$(grep "^function\s\+cmd_" < "$0" | awk '{gsub("cmd_", ""); $1=$3=""; print "\t", $0}' )
 

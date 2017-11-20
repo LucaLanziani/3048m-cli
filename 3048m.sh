@@ -83,22 +83,32 @@ function cmd_projects {
     authenticate
     JSON_PROJECTS=""
     for project in projects holidays leave_types; do
-        JSON_PROJECTS="$JSON_PROJECTS$(curl -s -L -b $COOKIE_FILE  ${API_URL}/$project)"
+        JSON_PROJECTS="$JSON_PROJECTS$(curl -s -L -b $COOKIE_FILE ${API_URL}/$project)"
     done
     echo "$JSON_PROJECTS" | $JQ_PATH -rs add
 }
 
-function cmd_project_by_name {
+function cmd_project_id_by_name { # <PROJECT_NAME>
     PROJECT_NAME=$1
+    if [ ! -n "$PROJECT_NAME" ]; then
+        echo "Project name is required here"
+        exit 1
+    fi
 
     cmd_projects | $JQ_PATH -r "map(select(.name == \"$PROJECT_NAME\")) | map({ name: .name, id: .id })"
 }
 
 function cmd_entry { # enter_work_day <PROJECT_ID> [<HOURS> <DATE>] (DATE format is YYYY-MM-DD)
-    authenticate
     PROJECT_ID=$1
     HOURS=$2
     DATE=$3
+
+    if [ ! -n "$PROJECT_ID" ]; then
+        echo "Project id is required here"
+        exit 1
+    fi
+
+    authenticate
 
     [ -n "$HOURS" ] || HOURS=8
     [ -n "$DATE" ] || DATE=$(date +"%Y-%m-%d")

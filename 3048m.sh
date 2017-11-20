@@ -4,6 +4,8 @@ set -o errexit
 SCRIPT_PATH=$(cd "$(dirname "$0")" || exit 1; pwd -P)
 cd "$SCRIPT_PATH" || exit 1;
 
+JQ_PATH=$(which jq) || (echo "Please install jq (https://stedolan.github.io/jq/)" && exit 1)
+
 API_URL="https://app.10000ft.com/api"
 COOKIE_FILE=".3048m.cookie"
 
@@ -35,7 +37,7 @@ function authenticate {
         fi
 
         AUTH=$(curl -s -j -c $COOKIE_FILE "${API_URL}/sessions/signin" -H 'Content-Type: application/json' --data-binary "{\"user_id\":\"$USERNAME\",\"password\":\"$PASSWORD\"}")
-        USERID=$(echo "$AUTH" | jq '.user_id')
+        USERID=$(echo "$AUTH" | $JQ_PATH '.user_id')
     fi
 }
 
@@ -51,11 +53,11 @@ function cmd_entries { # entries [<MONTH_BEHIND>]
     authenticate
     set_dates "$1"
     ENTRIES=$(curl -s -L -b $COOKIE_FILE  "${API_URL}/v1/users/$USERID/time_entries?from=$FIRST_DAY&to=$LAST_DAY")
-    ENTRIES_DATA=$(echo "$ENTRIES" | jq -r '.data')
-    # echo "$ENTRIES_DATA" | jq -r '"Total = \(map(.hours) | add) hours"'
+    ENTRIES_DATA=$(echo "$ENTRIES" | $JQ_PATH -r '.data')
+    # echo "$ENTRIES_DATA" | $JQ_PATH -r '"Total = \(map(.hours) | add) hours"'
 
     PROJECTS=$(cmd_projects)
-    echo "{\"projects\": ${PROJECTS}, \"entries\": ${ENTRIES_DATA} }" | jq -r '.entries[] as $entry | (.projects[]  | select ($entry.assignable_id == .id) ) as $project | [ $project + $entry ]' | jq -rs 'add'
+    echo "{\"projects\": ${PROJECTS}, \"entries\": ${ENTRIES_DATA} }" | $JQ_PATH -r '.entries[] as $entry | (.projects[]  | select ($entry.assignable_id == .id) ) as $project | [ $project + $entry ]' | $JQ_PATH -rs 'add'
 }
 
 function cmd_full_month_report { # full_month_report [<MONTH_BEHIND>]
@@ -64,12 +66,12 @@ function cmd_full_month_report { # full_month_report [<MONTH_BEHIND>]
     ENTRIES=$(cmd_entries "$@")
 
     echo -e "DATE\t\tHOURS\tPROJECT\t\tNOTES"
-    echo "$ENTRIES" | jq -r '.[] | select(.hours > 0) | ([ .date, .hours, .name, .notes ]) | @tsv'
+    echo "$ENTRIES" | $JQ_PATH -r '.[] | select(.hours > 0) | ([ .date, .hours, .name, .notes ]) | @tsv'
 }
 
 function cmd_month_report { # month_report [<MONTH_BEHIND>]
     ENTRIES=$(cmd_entries "$@")
-    echo "$ENTRIES" | jq -r 'group_by(.assignable_type) | map({ name: .[0].name, hours: map(.hours) | add })'
+    echo "$ENTRIES" | $JQ_PATH -r 'group_by(.assignable_type) | map({ name: .[0].name, hours: map(.hours) | add })'
 }
 
 function cmd_assignments {
@@ -83,13 +85,13 @@ function cmd_projects {
     for project in projects holidays leave_types; do
         JSON_PROJECTS="$JSON_PROJECTS$(curl -s -L -b $COOKIE_FILE  ${API_URL}/$project)"
     done
-    echo "$JSON_PROJECTS" | jq -rs add
+    echo "$JSON_PROJECTS" | $JQ_PATH -rs add
 }
 
 function cmd_project_by_name {
     PROJECT_NAME=$1
 
-    cmd_projects | jq -r "map(select(.name == \"$PROJECT_NAME\")) | map({ name: .name, id: .id })"
+    cmd_projects | $JQ_PATH -r "map(select(.name == \"$PROJECT_NAME\")) | map({ name: .name, id: .id })"
 }
 
 function cmd_entry { # enter_work_day <PROJECT_ID> [<HOURS> <DATE>] (DATE format is YYYY-MM-DD)
@@ -102,7 +104,7 @@ function cmd_entry { # enter_work_day <PROJECT_ID> [<HOURS> <DATE>] (DATE format
     [ -n "$DATE" ] || DATE=$(date +"%Y-%m-%d")
 
     ENTRIES=$(curl -s -L -b $COOKIE_FILE "${API_URL}/v1/users/$USERID/time_entries?from=$DATE&to=$DATE")
-    N_ENTRIES=$(echo "${ENTRIES}" | jq ".data | length")
+    N_ENTRIES=$(echo "${ENTRIES}" | $JQ_PATH ".data | length")
 
     echo "Enter your note for ($DATE): "
     read -r NOTES
@@ -112,7 +114,7 @@ function cmd_entry { # enter_work_day <PROJECT_ID> [<HOURS> <DATE>] (DATE format
     fi
 
     if [ "$N_ENTRIES" -eq 1 ]; then
-        ENTRY_ID=$(echo "${ENTRIES}" | jq ".data | .[0].id")
+        ENTRY_ID=$(echo "${ENTRIES}" | $JQ_PATH ".data | .[0].id")
         curl -X PUT -L -b $COOKIE_FILE "${API_URL}/v1/users/$USERID/time_entries/$ENTRY_ID" -H 'Content-Type: application/json' --data-binary "{\"user_id\": \"$USERID\", \"assignable_id\": \"$PROJECT_ID\", \"date\": \"$DATE\", \"hours\": \"$HOURS\", \"notes\":\"$NOTES\"}"
     fi
 }

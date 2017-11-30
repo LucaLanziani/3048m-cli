@@ -52,9 +52,9 @@ function set_dates {
 function cmd_entries { # entries [<MONTH_BEHIND>]
     authenticate
     set_dates "$1"
-    ENTRIES=$(curl -s -L -b $COOKIE_FILE  "${API_URL}/v1/users/$USERID/time_entries?from=$FIRST_DAY&to=$LAST_DAY")
+
+    ENTRIES=$(curl -s -L -b $COOKIE_FILE  "${API_URL}/v1/users/$USERID/time_entries?from=$FIRST_DAY&to=$LAST_DAY&per_page=35")
     ENTRIES_DATA=$(echo "$ENTRIES" | $JQ_PATH -r '.data')
-    # echo "$ENTRIES_DATA" | $JQ_PATH -r '"Total = \(map(.hours) | add) hours"'
 
     PROJECTS=$(cmd_projects)
     echo "{\"projects\": ${PROJECTS}, \"entries\": ${ENTRIES_DATA} }" | $JQ_PATH -r '.entries[] as $entry | (.projects[]  | select ($entry.assignable_id == .id) ) as $project | [ $project + $entry ]' | $JQ_PATH -rs 'add'

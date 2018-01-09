@@ -44,9 +44,9 @@ function authenticate {
 function set_dates {
     month_shift=$1
     [ -n "$month_shift" ] || month_shift=0
-
-    FIRST_DAY=$(date -d "-$(($(date +%d)-1)) days -$month_shift month" +"%Y-%m-%d")
-    LAST_DAY=$(date -d "-$(date +%d) days +1 month -$month_shift month" +"%Y-%m-%d")
+    DATE=$(date +%d)
+    FIRST_DAY=$(date -d "-$((${DATE#0}-1)) days -$month_shift month" +"%Y-%m-%d")
+    LAST_DAY=$(date -d "-${DATE#0} days +1 month -$month_shift month" +"%Y-%m-%d")
 }
 
 function cmd_entries { # entries [<MONTH_BEHIND>]
